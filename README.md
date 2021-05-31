@@ -1,2 +1,6 @@
 # zurvive
-web page
+web server
+mail server
+discord bot
+
+Dependencias: node, nodemon

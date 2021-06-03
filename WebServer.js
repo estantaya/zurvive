@@ -823,76 +823,125 @@ const mimetype = {
 
 
 var db = {
-	help:"Base de datos principal",
-	resources:[]
+	help : "Base de datos principal",
+	resources : {}
 };
 var dbSave=false;
 
-const hosts={
-};
-
-var sessions = [];
+var sessions = {};
 var sessionSave=false;
 
+var cache = {};
+
+var config = {
+	password : "my god in a bottle",
+	msg : {
+		forbiddenExt : "vos sos loco viteh",
+		invalidQuery : "query desconocida"
+	},
+	cacheSize : 1000000000,//1gb
+	hosts : { "localhost" : "public/"},
+	forbiddenExt : [ ".js" ]
+};
+
+
+Read("",db);
+if ("config" in db.resources) Read("/config",config);
+//if ("sessions" in db.resources) Read("sessions",sessions);
+
+
+
+var dbSaveRoutine = setInterval(function () {
+	if (!dbSave) return;
+	Save("",db);
+	/*fs.writeFile("./db", JSON.stringify(db,null,"\t"), function(err) {
+		
+		if (err) {
+			console.log("el archivo /db no se puede guardar pive");
+			console.log(err);
+		} else console.log("Se guardo "+db.resources.length+" recursos.");
+	});*/
+},600000);//cada 10 minutos
+
+//operaciones base de datos
+function Save(path,ref) {
+	//db[path]=resource;
+	fs.writeFile("./db"+path, JSON.stringify(ref,null,"\t"), function(err) {
+		
+		if (err) {
+			console.log("el archivo "+path+" no se puede guardar pive");
+			console.log(err);
+		} else console.log("Se guardo "+path);
+	});
+
+}
+function Read(path,out) {
+	fs.readFile("./db"+path, function(err, data) {
+		if (err) {
+			//throw err // Fail if the file can't be read.
+			//response.write('{error:}');
+			console.log("el archivo ./db"+path+" no existe pive");
+		} else {
+			//res.writeHead(200, {'Content-Type': 'image/jpeg'});
+			//response.write(JSON.stringify(responseBody));
+			//response.end(JSON.stringify(responseBody)); // Send the file data to the browser.
+			//response.end(data); // Send the file data to the browser.
+
+			//db=JSON.parse(data);
+			console.log("Se cargo ./db"+path);
+			out=JSON.parse(data);
+			//console.log("Se cargo /db ("+db.resources.length+" recursos)");
+		}
+	});
+}
+
+/*
 //buscar archivo db js
-fs.readFile("./db.json", function(err, data) {
-  if (err) {
-	  //throw err // Fail if the file can't be read.
-	//response.write('{error:}');
-	console.log("el archivo /db.json no existe pive");
-  } else {
-	//res.writeHead(200, {'Content-Type': 'image/jpeg'});
-	//response.write(JSON.stringify(responseBody));
-	//response.end(JSON.stringify(responseBody)); // Send the file data to the browser.
-	//response.end(data); // Send the file data to the browser.
-	db=JSON.parse(data);
-	console.log("Se cargo /db.json ("+db.resources.length+" recursos)");
-  }
-});
+fs.readFile("./db", function(err, data) {
+	if (err) {
+		//throw err // Fail if the file can't be read.
+		//response.write('{error:}');
+		console.log("el archivo /db no existe pive");
+		Save("config",{author:"admin",private:true},config);
+	} else {
+		//res.writeHead(200, {'Content-Type': 'image/jpeg'});
+		//response.write(JSON.stringify(responseBody));
+		//response.end(JSON.stringify(responseBody)); // Send the file data to the browser.
+		//response.end(data); // Send the file data to the browser.
+
+		db=JSON.parse(data);
+		console.log("Se cargo /db ("+db.resources.length+" recursos)");
+
+		Read("config",config);
+	}
+});*/
 
 //buscar sessions
-fs.readFile("./sessions.json", function(err, data) {
+fs.readFile("./sessions", function(err, data) {
   if (err) {
 	  //throw err // Fail if the file can't be read.
 	//response.write('{error:}');
-	console.log("el archivo /sessions.json no existe pive");
+	console.log("el archivo /sessions no existe pive");
   } else {
 	//res.writeHead(200, {'Content-Type': 'image/jpeg'});
 	//response.write(JSON.stringify(responseBody));
 	//response.end(JSON.stringify(responseBody)); // Send the file data to the browser.
 	//response.end(data); // Send the file data to the browser.
 	sessions=JSON.parse(data);
-	console.log("Se cargo /sessions.json ("+sessions.length+" sesiones)");
+	console.log("Se cargo /sessions ("+sessions.length+" sesiones)");
   }
 });
 
-var dbSaveRoutine = setInterval(function () {
-	if (!dbSave) return;
-	fs.writeFile("./db.json", JSON.stringify(db,null,"\t"), function(err) {
-		
-		if (err) {
-			console.log("el archivo /db.json no se puede guardar pive");
-			console.log(err);
-		} else console.log("Se guardo "+db.resources.length+" recursos.");
-	});
-},600000);//cada 10 minutos
-
 var sessionSaveRoutine = setInterval(function () {
 	if (!sessionSave) return;
-	fs.writeFile("./sessions.json", JSON.stringify(sessions,null,"\t"), function(err) {
+	fs.writeFile("./sessions", JSON.stringify(sessions,null,"\t"), function(err) {
 		
 		if (err) {
-			console.log("el archivo /sessions.json no se puede guardar pive");
+			console.log("el archivo /sessions no se puede guardar pive");
 			console.log(err);
 		} else console.log("Se guardo "+sessions.length+" sesiones.");
 	});
 },600000);//cada 10 minutos
-
-const blog = "";
-
-const forbiddenExt={
-	".js":""
-};
 
 const web=http.createServer((request, response) => {
   const { headers, method, url } = request;
@@ -929,7 +978,7 @@ const web=http.createServer((request, response) => {
 	//console.log("url debug: " + url);
 		
 	
-	var parsed=new urlLib.URL("http://45.43.18.252"+url);
+	var parsed=new urlLib.URL("http://127.0.0.1"+url);
 	//if (headers.host!="") parsed=new urlLib.URL("http://"+headers.host+url);
 	var filepath=parsed.pathname;
 	const pathParse=path.parse(filepath);
@@ -942,23 +991,37 @@ const web=http.createServer((request, response) => {
 		response.write('trectar se la come <img src="/kannagasm.png"/>');
 		response.end();
 	} else */
+	
 	var query=parsed.searchParams.get("query");
-
+	
+	//myArray.indexOf(searchTerm) === -1
+	
 	if (query!=null) {
 		response.writeHead(200, {'Content-Type': mimetype[".json"]});
-		if (query=="webhook") {
-			/*
-			https://discord.com/api/webhooks/836115331172270080/SL9v5uiKYCnHhl7egPriqyA7pF3qGBSviJ33mujLd2HxDfXhJtqfBIb80-kGA8mDyEBB
-			const kannagasmHook = new Discord.WebhookClient('836115331172270080', 'SL9v5uiKYCnHhl7egPriqyA7pF3qGBSviJ33mujLd2HxDfXhJtqfBIb80-kGA8mDyEBB');
+		if (query=="config") {
 			
-			kannagasmHook.send('hola');
-			*/
+			var res={success:true};
 			
-			var hook = new Discord.WebhookClient(parsed.searchParams.get("id"), parsed.searchParams.get("token"));
+			var pass=parsed.searchParams.get("p");
 			
-			hook.send(parsed.searchParams.get("msg"));
+			if (pass!=config.password) {
+				res.success=false;
+				res.help="Password incorrecta";
+			} else {
 			
-			response.end(JSON.stringify(hook,null,"\t"));
+				var newconfig = {
+					password : parsed.searchParams.get("newpass"),
+					msg : {
+						forbiddenExt : parsed.searchParams.get("newpass"),
+						invalidQuery : parsed.searchParams.get("newpass")
+					},
+					hosts : parsed.searchParams.get("newpass"),
+					forbiddenExt : parsed.searchParams.get("newpass")
+				};
+				
+			}
+			
+			response.end(JSON.stringify(res,null,"\t"));
 			return;
 		}
 		
@@ -983,6 +1046,7 @@ const web=http.createServer((request, response) => {
 			});
 			return;
 		}
+		
 		if (query=="headers") {
 			response.end(JSON.stringify(headers,null,"\t"));
 			return;
@@ -1116,7 +1180,7 @@ const web=http.createServer((request, response) => {
 			return;
 		}
 		
-		//OBTENER DATA DE LA BASE DE DATOS 
+		//OBTENER DATA DE LA BASE DE DATOS CON FORMATO CKAN
 		
 		var res={success:false};
 		
@@ -1233,49 +1297,90 @@ const web=http.createServer((request, response) => {
 		
 		response.end(JSON.stringify(res));
 		
-	} else if (pathParse.ext in forbiddenExt) {
+	} else if (config.forbiddenExt.indexOf(pathParse.ext) != -1) {
+		
 		response.writeHead(403, {'Content-Type': mimetype[".txt"]});
-		response.end("vos sos loco viteh");
+		response.end(config.msg.forbiddenExt);
+		console.log("hacking? ["+headers.host+"]"+url);
+		console.log(headers.host + " extensión no permitida, modifique config.forbiddenExt");
 	} else {
 		
 		//console.log(url);
 		//console.log(pathParse);
-		if (headers.host in hosts) {
-			filepath = hosts[headers.host]+parsed.pathname;
-			if (pathParse.ext==""&&url.endsWith("/")) filepath += "index.html";
+		var ext=pathParse.ext;
+		if (headers.host in config.hosts) {
+			
+			filepath = parsed.pathname;
+			
+			if (pathParse.ext=="") {
+				filepath += url.endsWith("/")?"index.html":"/index.html";
+				ext=".html";
+			}
 		} else {
+			
+			//host no permitido, hacking?
+			console.log(headers.host + " host no permitido, modifique config.hosts");
+			
 			response.writeHead(403, {'Content-Type': mimetype[".txt"]});
 			response.end("no access");
-			console.log("illegal access");
 			return;
 		}
 		
-		fs.readFile("C://zurvive"+decodeURI(filepath), function(err, data) {
-		  if (err) {
-			response.setHeader('Content-Type', 'text/html');
-			response.statusCode = 404;
-			  //throw err // Fail if the file can't be read.
-			response.write('el archivo '+filepath+' no existe pive<br>');
-			response.end();
-		  } else {
-			//res.writeHead(200, {'Content-Type': 'image/jpeg'});
-			if (pathParse.ext in mimetype) {
-				response.writeHead(200, {'Content-Type': mimetype[pathParse.ext]});
-				response.end(data);
-			} else response.end(data); // Send the file data to the browser.
-		  }
-		});
+		var cacheFile="./"+config.hosts[headers.host]+decodeURI(filepath);
+		
+		if (cacheFile in cache) {
+			
+			if (typeof cache[cacheFile] === 'string')  response.writeHead(200, {'Content-Type': mimetype[".txt"]});
+			else if (ext in mimetype) response.writeHead(200, {'Content-Type': mimetype[pathParse.ext]});
+			else response.writeHead(200, {'Content-Type': mimetype[".a"]});//datos binarios sin formato
+			response.end(cache[cacheFile]); // Send the file data to the browser.
+		} else {
+			
+			fs.readFile(cacheFile, function(err, data) {
+				if (err) {
+					
+					cache[cacheFile]="El archivo " + filepath + " no existe pive";
+					
+					response.setHeader('Content-Type', 'text/html');
+					response.statusCode = 404;
+					  //throw err // Fail if the file can't be read.
+					response.write('el archivo '+filepath+' no existe pive<br>');
+					response.end();
+				} else {
+					
+					cache[cacheFile]=data;
+					
+					if (typeof data === "string") cacheSize+=data.length;
+					else cacheSize+=data.size;
+					var cacheKey="";
+					while (cacheSize>config.maxCache) {
+						cacheKey=Object.keys(cache)[0];
+						if (typeof cache[cacheKey] === "string") cacheSize-=cache[cacheKey].length;
+						else cacheSize-=cache[cacheKey].size;
+						delete cache[cacheKey];
+					}
+					//res.writeHead(200, {'Content-Type': 'image/jpeg'});
+					if (ext in mimetype) response.writeHead(200, {'Content-Type': mimetype[pathParse.ext]});
+					else response.writeHead(200, {'Content-Type': mimetype[".a"]});//datos binarios sin formato
+					response.end(data); // Send the file data to the browser.
+				}
+			});
+		}
+		
 	}
     // Note: the 2 lines above could be replaced with this next one:
     // response.end(JSON.stringify(responseBody))
-
+	
     // END OF NEW STUFF
   });
 });
+
 web.on('connection', (clientSocket) => {
+	
 	console.log("connection");
 	console.log(clientSocket.remoteAddress);
 });
+
 web.listen(80);
 
 //console.log(os.hostname());

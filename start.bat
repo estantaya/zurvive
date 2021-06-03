@@ -1,6 +1,16 @@
 @echo off
 color a
-cd "%~dp0"
-echo "%~dp0"
-nodemon WebServer.js --config nodemon_config.js
+if "%~1" == "" goto seljs
+:start
+echo Start...
+set js=%~n1
+cd %~dp1
+title %js%
+:exec
+node %js%
+echo Reiniciar
 pause
+goto exec
+:seljs
+set /p js="JS File: "
+call :start %js%

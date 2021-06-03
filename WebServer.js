@@ -832,28 +832,33 @@ var sessions = {};
 var sessionSave=false;
 
 var cache = {};
+var cacheSize = 0;
 
 var config = {
 	password : "my god in a bottle",
 	msg : {
 		forbiddenExt : "vos sos loco viteh",
-		invalidQuery : "query desconocida"
+		invalidQuery : "query desconocida",
+		fileNotFound : "el archivo ${filename} no existe pive",
+		fileNotSave : "el archivo ${filename} no se puede guardar pive"
 	},
-	cacheSize : 1000000000,//1gb
+	maxCache : 1000000000,//1gb
 	hosts : { "localhost" : "public/"},
 	forbiddenExt : [ ".js" ]
 };
 
 
 Read("",db);
-if ("config" in db.resources) Read("/config",config);
+if ("/config" in db.resources) Read("/config",config);
+else Save("/config",{author:"admin",private:true},config);
 //if ("sessions" in db.resources) Read("sessions",sessions);
 
 
 
 var dbSaveRoutine = setInterval(function () {
 	if (!dbSave) return;
-	Save("",db);
+	dbSave=false;
+	Save("",{author:"admin",private:true},db);
 	/*fs.writeFile("./db", JSON.stringify(db,null,"\t"), function(err) {
 		
 		if (err) {
@@ -864,23 +869,41 @@ var dbSaveRoutine = setInterval(function () {
 },600000);//cada 10 minutos
 
 //operaciones base de datos
-function Save(path,ref) {
-	//db[path]=resource;
-	fs.writeFile("./db"+path, JSON.stringify(ref,null,"\t"), function(err) {
+function Save(filename,resource,ref) {
+	db[filename]=resource;
+	dbSave=true;
+	
+	var filepath=filename.split("/");
+	
+	var dirname="";
+	
+	if (filepath.length>1) {
+		dirname=filename.replace("/"+filepath[filepath.length-1],"");
+	}
+	
+	//console.log(filepath);
+	
+	if (!fs.existsSync("./db"+dirname)) {
+		//fs.
+		fs.mkdirSync("./db"+dirname);
+	}
+	
+	fs.writeFile("./db"+filename, JSON.stringify(ref,null,"\t"), function(err) {
 		
 		if (err) {
-			console.log("el archivo "+path+" no se puede guardar pive");
+			//console.log();
+			console.log(config.msg.fileNotSave.replace("${filename}","./db"+filename));
 			console.log(err);
-		} else console.log("Se guardo "+path);
+		} else console.log("Se guardo "+filename);
 	});
 
 }
-function Read(path,out) {
-	fs.readFile("./db"+path, function(err, data) {
+function Read(filename,out) {
+	fs.readFile("./db"+filename, function(err, data) {
 		if (err) {
 			//throw err // Fail if the file can't be read.
 			//response.write('{error:}');
-			console.log("el archivo ./db"+path+" no existe pive");
+			console.log(config.msg.fileNotFound.replace("${filename}","./db"+filename));
 		} else {
 			//res.writeHead(200, {'Content-Type': 'image/jpeg'});
 			//response.write(JSON.stringify(responseBody));
@@ -888,7 +911,7 @@ function Read(path,out) {
 			//response.end(data); // Send the file data to the browser.
 
 			//db=JSON.parse(data);
-			console.log("Se cargo ./db"+path);
+			console.log("Se cargo ./db"+filename);
 			out=JSON.parse(data);
 			//console.log("Se cargo /db ("+db.resources.length+" recursos)");
 		}
@@ -1112,7 +1135,7 @@ const web=http.createServer((request, response) => {
 				method: 'GET',
 				hostname: 'datos.gob.ar',
 				port: 443,
-				path: '/api/3/action'+sendQuery,
+				"path": '/api/3/action'+sendQuery,
 				headers:{
 					"accept": "*/*",
 					"Content-Type":"application/x-www-form-urlencoded"
@@ -1331,7 +1354,7 @@ const web=http.createServer((request, response) => {
 		if (cacheFile in cache) {
 			
 			if (typeof cache[cacheFile] === 'string')  response.writeHead(200, {'Content-Type': mimetype[".txt"]});
-			else if (ext in mimetype) response.writeHead(200, {'Content-Type': mimetype[pathParse.ext]});
+			else if (ext in mimetype) response.writeHead(200, {'Content-Type': mimetype[ext]});
 			else response.writeHead(200, {'Content-Type': mimetype[".a"]});//datos binarios sin formato
 			response.end(cache[cacheFile]); // Send the file data to the browser.
 		} else {
@@ -1360,7 +1383,7 @@ const web=http.createServer((request, response) => {
 						delete cache[cacheKey];
 					}
 					//res.writeHead(200, {'Content-Type': 'image/jpeg'});
-					if (ext in mimetype) response.writeHead(200, {'Content-Type': mimetype[pathParse.ext]});
+					if (ext in mimetype) response.writeHead(200, {'Content-Type': mimetype[ext]});
 					else response.writeHead(200, {'Content-Type': mimetype[".a"]});//datos binarios sin formato
 					response.end(data); // Send the file data to the browser.
 				}

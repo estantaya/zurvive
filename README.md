@@ -3,4 +3,8 @@ web server
 mail server
 discord bot
 
-Dependencias: node, nodemon
+Uso:
+instalar node, ejecutar WebServer.js con start.bat
+Ya esta!
+
+Dependencias: node

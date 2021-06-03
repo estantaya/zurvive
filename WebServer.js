@@ -848,44 +848,63 @@ var config = {
 };
 
 
-Read("",db);
+Read("/index",db);
 if ("/config" in db.resources) Read("/config",config);
 else Save("/config",{author:"admin",private:true},config);
 //if ("sessions" in db.resources) Read("sessions",sessions);
 
+var dbSaveRoutine = dbSaveRoutine(10*60);
 
+function WaitSeconds(s) {
+	return new Promise(resolve => {
+    setTimeout(() => {
+      resolve();
+    }, 1000*s);
+  });
+}
 
-var dbSaveRoutine = setInterval(function () {
+async function dbSaveRoutine(t) {
+	while (true) {
+		await WaitSeconds(t);
+		if (!dbSave) continue;
+		dbSave=false;
+		Save("/index",{author:"admin",private:true},db);
+	}
+}
+
+/*var dbSaveRoutine = setInterval(function () {
 	if (!dbSave) return;
 	dbSave=false;
-	Save("",{author:"admin",private:true},db);
-	/*fs.writeFile("./db", JSON.stringify(db,null,"\t"), function(err) {
+	Save("/index",{author:"admin",private:true},db);
+},2000);//cada 10 minutos*/
+/*fs.writeFile("./db", JSON.stringify(db,null,"\t"), function(err) {
 		
 		if (err) {
 			console.log("el archivo /db no se puede guardar pive");
 			console.log(err);
 		} else console.log("Se guardo "+db.resources.length+" recursos.");
 	});*/
-},600000);//cada 10 minutos
 
 //operaciones base de datos
 function Save(filename,resource,ref) {
-	db[filename]=resource;
-	dbSave=true;
+	db.resources[filename]=resource;//uwu
+	if (filename!="/index") dbSave=true;
 	
-	var filepath=filename.split("/");
-	
-	var dirname="";
+	/*var filepath=filename.split("/");
 	
 	if (filepath.length>1) {
 		dirname=filename.replace("/"+filepath[filepath.length-1],"");
 	}
 	
+	var dirname="";*/
+	
+	var filepath=path.parse("./db"+filename);
+	
 	//console.log(filepath);
 	
-	if (!fs.existsSync("./db"+dirname)) {
+	if (!fs.existsSync(filepath.dir)) {
 		//fs.
-		fs.mkdirSync("./db"+dirname);
+		fs.mkdirSync(filepath.dir);
 	}
 	
 	fs.writeFile("./db"+filename, JSON.stringify(ref,null,"\t"), function(err) {
